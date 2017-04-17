@@ -29,7 +29,7 @@ public class KerberosAuth {
     private String realm;
     private String kdc;
 
-    public void authenticate() {
+    public UserGroupInformation authenticate() {
         URL urlKeyTab = this.getClass().getClassLoader().getResource(keyTab);
         URL urlKrb5Conf = this.getClass().getClassLoader().getResource(krb5Conf);
         File fileKeyTab = new File(urlKeyTab.getPath());
@@ -38,7 +38,11 @@ public class KerberosAuth {
         System.setProperty("java.security.krb5.conf", fileKrb5Conf.getAbsolutePath());
         System.setProperty("java.security.krb5.realm", realm);
         System.setProperty("java.security.krb5.kdc",kdc);
+
         System.setProperty("sun.security.krb5.debug", "true");
+        System.setProperty("sun.security.jgss.debug", "true");
+        System.setProperty("com.sun.security.auth.module.debug","true");
+        System.setProperty("java.security.debug","all");
 
         Configuration configuration = new Configuration();
         configuration.set("hadoop.security.authentication", "kerberos");
@@ -47,7 +51,7 @@ public class KerberosAuth {
         UserGroupInformation.setConfiguration(configuration);
 
         try {
-            UserGroupInformation.loginUserFromKeytab(principal, fileKeyTab.getAbsolutePath());
+            return UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, fileKeyTab.getAbsolutePath());
         } catch (IOException e) {
             logger.error(e.getMessage());
             throw new RuntimeException(e);
