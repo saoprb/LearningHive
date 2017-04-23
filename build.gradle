@@ -37,7 +37,9 @@ configurations.all {
 
 dependencies {
     compile("org.springframework.boot:spring-boot-starter")
+    compile("org.springframework:spring-jdbc")
     compile("org.apache.hadoop:hadoop-common:2.6.0-cdh5.7.0.2")
+    compile("org.apache.hive:hive-jdbc:1.1.0-cdh5.7.6")
     testCompile("org.springframework.boot:spring-boot-starter-test")
     testCompile("junit:junit")
 }

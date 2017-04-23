@@ -2,6 +2,7 @@ package com.sao.learning.authentication;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.eclipse.jetty.server.Authentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedExceptionAction;
 
 /**
  * Created by saopr on 4/14/2017.
@@ -29,10 +32,8 @@ public class KerberosAuth {
     private String realm;
     private String kdc;
 
-    public UserGroupInformation authenticate() {
-        URL urlKeyTab = this.getClass().getClassLoader().getResource(keyTab);
+    private void init() {
         URL urlKrb5Conf = this.getClass().getClassLoader().getResource(krb5Conf);
-        File fileKeyTab = new File(urlKeyTab.getPath());
         File fileKrb5Conf = new File(urlKrb5Conf.getPath());
 
         System.setProperty("java.security.krb5.conf", fileKrb5Conf.getAbsolutePath());
@@ -49,10 +50,30 @@ public class KerberosAuth {
         configuration.set("hadoop.security.authorization", "true");
 
         UserGroupInformation.setConfiguration(configuration);
+    }
+
+    public UserGroupInformation authenticate() {
+        init();
+
+        URL urlKeyTab = this.getClass().getClassLoader().getResource(keyTab);
+        File fileKeyTab = new File(urlKeyTab.getPath());
 
         try {
-            return UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, fileKeyTab.getAbsolutePath());
+            logger.info("Authenticating kerberos with principal {} keytab {}", principal, fileKeyTab.getAbsolutePath());
+            UserGroupInformation ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(principal, fileKeyTab.getAbsolutePath());
+            logger.info("Authenticated...");
+            return ugi;
         } catch (IOException e) {
+            logger.error(e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Object authenticate(PrivilegedExceptionAction<?> action) {
+        UserGroupInformation ugi = authenticate();
+        try {
+            return ugi.doAs(action);
+        } catch (IOException | InterruptedException e) {
             logger.error(e.getMessage());
             throw new RuntimeException(e);
         }
